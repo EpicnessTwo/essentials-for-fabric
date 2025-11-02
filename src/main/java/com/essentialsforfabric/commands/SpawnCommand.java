@@ -14,7 +14,7 @@ import net.minecraft.util.math.BlockPos;
 public class SpawnCommand {
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         dispatcher.register(CommandManager.literal("spawn")
-            .requires(source -> source.hasPermissionLevel(2))
+            .requires(source -> source.hasPermissionLevel(0))
             .executes(context -> teleportToSpawn(context))
             .then(CommandManager.argument("player", EntityArgumentType.player())
                 .executes(context -> teleportOtherToSpawn(context))));
