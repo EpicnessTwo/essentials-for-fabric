@@ -13,8 +13,13 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
+import net.minecraft.text.MutableText;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
+import com.essentialsforfabric.util.WorldUtil;
 
 import java.util.Map;
 
@@ -25,6 +30,10 @@ public class WarpCommands {
             .executes(context -> listWarps(context))
             .then(CommandManager.argument("name", StringArgumentType.string())
                 .executes(context -> warp(context, StringArgumentType.getString(context, "name")))));
+
+        dispatcher.register(CommandManager.literal("warps")
+            .requires(source -> PermissionUtil.hasPermission(source, "essentials.warp", 0))
+            .executes(WarpCommands::listWarps));
 
         dispatcher.register(CommandManager.literal("setwarp")
             .requires(source -> PermissionUtil.hasPermission(source, "essentials.setwarp", 2))
@@ -93,11 +102,40 @@ public class WarpCommands {
             return 0;
         }
 
-        StringBuilder warpList = new StringBuilder("Available warps: ");
-        warpList.append(String.join(", ", warps.keySet()));
+        int count = warps.size();
+        context.getSource().sendFeedback(() -> Text.literal("Available warps (" + count + "):"), false);
 
-        context.getSource().sendFeedback(() -> Text.literal(warpList.toString()), false);
+        warps.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER))
+            .forEachOrdered(entry -> {
+                String name = entry.getKey();
+                PlayerDataManager.WarpData loc = entry.getValue();
 
-        return warps.size();
+                String worldLabel = WorldUtil.readableWorld(loc.world);
+                int ix = (int) Math.floor(loc.x);
+                int iy = (int) Math.floor(loc.y);
+                int iz = (int) Math.floor(loc.z);
+
+                MutableText line = Text.literal(" - ")
+                    .append(
+                        Text.literal("[Teleport]")
+                            .styled(style -> style
+                                .withColor(Formatting.GREEN)
+                                .withBold(true)
+                                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/warp " + name))
+                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Click to teleport to '" + name + "'"))))
+                    )
+                    .append(Text.literal("  "))
+                    .append(Text.literal(name).formatted(Formatting.AQUA))
+                    .append(Text.literal("  "))
+                    .append(Text.literal("[" + worldLabel + "] ").formatted(Formatting.DARK_GRAY))
+                    .append(Text.literal(ix + ", " + iy + ", " + iz).formatted(Formatting.GRAY))
+                    .append(Text.literal("  "));
+
+                context.getSource().sendFeedback(() -> line, false);
+            });
+
+        return count;
     }
+
 }
